@@ -24,15 +24,13 @@ def run_from_file(path):
 
 
 def run_as_console():
-    i = 0
-
     while True:
         try:
             input_order_raw = input("> ")
             book.new_order(input_order_raw)
         except Exception as e:
             print(e.args)
-            break
+            continue
 
         transactions = book.make_transactions()
 
