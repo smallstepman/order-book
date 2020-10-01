@@ -1,125 +1,179 @@
 import json
-import bisect
+import operator
+from itertools import chain
 from typing import Dict, List, Union, NewType
 
 from orders import OrderInputSchema, IcebergOrder, LimitOrder
 
 
 class OrderBook:
-    order_ids = []
-    OrdersList = NewType('orders_list', List[Union[IcebergOrder, LimitOrder]])
-    buy_orders = OrdersList([])
-    sell_orders = OrdersList([])
+
+    _order_ids = []
+    _OrderTypes = NewType('orders_types', Union[IcebergOrder, LimitOrder])
+    _OrdersList = NewType('orders_list', List[_OrderTypes])
+    _buy_orders = _OrdersList([])
+    _sell_orders = _OrdersList([])
 
     def __repr__(self):
         return json.dumps({
-            'buyOrders': [o.overview() for o in self.buy_orders],
-            'sellOrders': [o.overview() for o in self.sell_orders]
+            'buyOrders': [o.overview() for o in self._buy_orders],
+            'sellOrders': [o.overview() for o in self._sell_orders]
+        })
+
+    def __str__(self):
+        """ debug view """
+        return json.dumps({
+            'buyOrders': [o.debug() for o in self._buy_orders],
+            'sellOrders': [o.debug() for o in self._sell_orders]
         })
 
     def new_order(self, raw_order: str) -> None:
-        """
-            not implemented:
-            - if two orders have same price, insert to list sorted by time added 
-        """
         order_schema = OrderInputSchema()
-        # if (v := order_schema.validate(raw_order)):
-        #     print(v, raw_order)
-        #     raise Exception(v)
         order = order_schema.loads(raw_order)
-        if order.order_id in self.order_ids:
+        if order.order_id in self._order_ids:
             raise Exception("duplicate order ID")
-        self.order_ids.append(order.order_id)
+        self._order_ids.append(order.order_id)
+        self._insort_order(order)
 
-        if order.direction.lower() == 'buy':
-            if len(self.buy_orders) == 0:
-                self.buy_orders.append(order)
-            else:
-                for i, e in enumerate(self.buy_orders):
-                    if e.price <= order.price:
-                        self.buy_orders.insert(i, order)
-                        break
-        elif order.direction.lower() == 'sell':
-            bisect.insort(self.sell_orders, order)
-
-    def make_transactions(self) -> List[Dict]:
-        """
-            not implemented:
-            - multiple icebergs at same price point
-            - aggressing order bigger than iceberg's peak
-            - combinations of above two points 
-        """
         transactions = []
-
-        # awefut time complexity, maybe could be reduced with dynamic programming approach but I'm not that smart yet
-        for bo_idx, bo in enumerate(self.buy_orders):
-            # break early - no valid transactions
-            if len(self.sell_orders) >= 1:
-                if bo < self.sell_orders[0]:
-                    break
-
-            for so_idx, so in enumerate(self.sell_orders):
-                if bo > so:
-                    if bo.quantity < so.quantity:
-                        quantity_sold = bo.quantity
-                        self.buy_orders[bo_idx].quantity = bo.quantity - \
-                            quantity_sold
-                        self.sell_orders[so_idx].quantity = so.quantity - \
-                            quantity_sold
-                    else:
-                        quantity_sold = bo.quantity - so.quantity
-                        self.buy_orders[bo_idx].quantity = bo.quantity - \
-                            quantity_sold
-                        self.sell_orders[so_idx].quantity = so.quantity - \
-                            quantity_sold
-
-                    transactions.append({
-                        "buyOrderId": bo.order_id,
-                        "sellOrderId": so.order_id,
-                        "price": bo.price,
-                        "quantity": quantity_sold
-                    })
-
-                    self._update_after_transaction(
-                        idx=bo_idx, order=bo, orders_list=self.buy_orders)
-                    self._update_after_transaction(
-                        idx=so_idx, order=so, orders_list=self.sell_orders)
+        opposing_orders = self._sell_orders if order.direction == 'buy' else self._buy_orders
+        if (ars := self._check_if_multiple_icebergs_at_same_price_point(order, opposing_orders)):
+            transactions = self._multiple_icebergs_upahead(ars, order)
+        else:
+            for oo_idx, oo in enumerate(opposing_orders):
+                just_executed = self._find_and_execute_transactions(oo)
+                transactions = list(chain(just_executed + transactions))
 
         return transactions
 
-    # def _execute_transaction(bo, so):
-    #     if bo.quantity < so.quantity:
-    #         quantity_sold = bo.quantity
-    #         self.buy_orders[bo_idx].quantity = bo.quantity - \
-    #             quantity_sold
-    #         self.sell_orders[so_idx].quantity = so.quantity - \
-    #             quantity_sold
+    def _insort_order(self, new_order):
+        if new_order.direction == 'buy':
+            cmp, orders_list = False, operator.gt, self._buy_orders
+        elif new_order.direction == 'sell':
+            cmp, orders_list = True, operator.lt, self._sell_orders
+        insert_here = False
+
+        orders_list.append(new_order)
+        orders_list.sort(key=lambda i: (
+            i.price, i.timestamp), reverse=not r)
+
+    def make_transactions(self) -> List[Dict]:
+        transactions = []
+
+        # aweful time complexity, maybe could be reduced with dynamic programming approach but I'm not that smart yet
+        for bo_idx, bo in enumerate(self._buy_orders):
+            if (l := self._check_if_multiple_orders_at_same_price_point(bo, self._sell_orders)):
+                transactions = self._multiple_icebergs_upahead(bo, l)
+            else:
+                just_executed_transactions = self._find_and_execute_transactions(
+                    bo)
+                transactions = list(itertools.chain(
+                    just_executed_transactions + transactions))
+
+        return transactions
+
+    # def _check_if_multiple_icebergs_at_same_price_point(self, order, orders_list):
+    #     return [i for i, other in enumerate(orders_list) if order == other and isinstance(other, IcebergOrder)]
+    #     # if any(same_price_icebergs_idx):
+
+    # def _multiple_icebergs_upahead(self, idxs: List[int], aggressing_order: _OrderTypes):
+    #     iceberg_orders = []
+    #     t = []
+    #     ao_dir = ''
+    #     if aggressing_order.direction == 'buy':
+    #         ao_dir = "buy"
+    #         for i in idxs:
+    #             iceberg_orders.append(self._sell_orders[i])
+    #     if aggressing_order.direction == 'sell':
+    #         ao_dir = "buy"
+    #         for i in idxs:
+    #             iceberg_orders.append(self._buy_orders[i])
+
+    #     icebergs_total_visible_quantity = sum(o.quantity for o in iceberg_orders)
+    #     icebergs_total_hidden_quantity = sum(
+    #         o.hidden_quantity for o in iceberg_orders)
+    #     aggressing_order_total_quantity = aggressing_order.quantity + aggressing_order.hidden_quantity
+    #     aggressing_order_quantity_left_after_consuming_peaks = aggressing_order_total_quantity - \
+    #         icebergs_total_visible_quantity
+    #     if icebergs_total_visible_quantity >= aggressing_order_total_quantity:
+    #         for io in iceberg_orders:
+    #             t.append(self._execute_transaction(io, aggressing_order))
     #     else:
-    #         quantity_sold = bo.quantity - so.quantity
-    #         self.buy_orders[bo_idx].quantity = bo.quantity - \
-    #             quantity_sold
-    #         self.sell_orders[so_idx].quantity = so.quantity - \
-    #             quantity_sold
+    #         for io in iceberg_orders:
+    #             qualtity_sold = io.hidden_quantity / \
+    #                 total_hidden_quantity * aggressing_order_quantity_left_after_consuming_peaks
+    #             t.append(self._execute_transaction(io, aggressing_order))
+    #             io.hidden_quantity -= qualtity_sold
+    #             aggressing_order.hi
 
-    #     return {
-    #         "buyOrderId": bo.order_id,
-    #         "sellOrderId": so.order_id,
-    #         "price": bo.price,
-    #         "quantity": quantity_sold
-    #     }
+    #     return t
 
-    def _update_after_transaction(self, idx: int, order: Union[IcebergOrder, LimitOrder], orders_list: OrdersList):
+    def _execute_transaction(self, order, opposite_order):
+        if order.quantity <= opposite_order.quantity:
+            quantity_sold = order.quantity
+        else:
+            quantity_sold = order.quantity - opposite_order.quantity
+
+        order.quantity -= quantity_sold
+        opposite_order.quantity -= quantity_sold
+
+        self._update_order_after_transaction(order)
+        self._update_order_after_transaction(opposite_order)
+
+        return {
+            "buyOrderId": order.order_id if order.direction == 'buy' else opposite_order.order_id,
+            "sellOrderId": order.order_id if order.direction == 'sell' else opposite_order.order_id,
+            "price": opposite_order.price,
+            "quantity": quantity_sold
+        }
+
+    def _find_and_execute_transactions(self, buy_order, t=[]):
+        for so_idx, sell_order in enumerate(self._sell_orders):
+            if buy_order >= sell_order:
+
+                if buy_order.quantity <= sell_order.quantity:
+                    quantity_sold = buy_order.quantity
+                else:
+                    quantity_sold = buy_order.quantity - sell_order.quantity
+
+                buy_order.quantity -= quantity_sold
+                sell_order.quantity -= quantity_sold
+
+                self._update_order_after_transaction(buy_order)
+                self._update_order_after_transaction(sell_order)
+
+                t.append({
+                    "buyOrderId": buy_order.order_id,
+                    "sellOrderId": sell_order.order_id,
+                    "price": buy_order.price,
+                    "quantity": quantity_sold
+                })
+
+                if buy_order.quantity > 0:
+                    if isinstance(buy_order, IcebergOrder):
+                        # print(buy_order.debug())
+                        t = self._find_and_execute_transactions(buy_order, t)
+
+        return t
+
+    def _update_order_after_transaction(self, order: _OrderTypes):
         if order.quantity == 0:
             if isinstance(order, IcebergOrder):
                 if order.hidden_quantity > order.peak:
                     order.quantity = order.peak
                     order.hidden_quantity -= order.peak
-                    # ???_execute_transaction()
                 elif order.hidden_quantity == 0 and order.quantity == 0:
-                    orders_list.pop(idx)
+                    self._delete_order_with_zero_quantity(order)
                 else:
                     order.quantity = order.hidden_quantity
-                    # ???_execute_transaction()
                     order.hidden_quantity = 0
             else:
-                orders_list.pop(idx)
+                self._delete_order_with_zero_quantity(order)
+
+    def _delete_order_with_zero_quantity(self, order):
+        if order.direction == 'buy':
+            idx = self._buy_orders.index(order)
+            self._buy_orders.pop(idx)
+        elif order.direction == 'sell':
+            idx = self._sell_orders.index(order)
+            self._sell_orders.pop(idx)
