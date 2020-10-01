@@ -54,7 +54,7 @@ class Order:
 
     def overview(self):
         return dict(
-            id=self.order_id, quantity=self.quantity(), price=self.price
+            id=self.order_id, quantity=self.quantity, price=self.price
         )
 
     def debug(self):
@@ -75,9 +75,6 @@ class LimitOrder(Order):
         self.direction = direction.lower()
         self.timestamp = datetime.now()
 
-    def quantity(self):
-        return self.quantity
-
 
 class IcebergOrder(Order):
     order_id = None
@@ -86,7 +83,6 @@ class IcebergOrder(Order):
     direction = None
     peak = None
     hidden_quantity = None
-    start_quantity = None
     timestamp = None
 
     def __init__(self, id, quantity, price, direction, peak):
@@ -96,11 +92,4 @@ class IcebergOrder(Order):
         self.direction = direction.lower()
         self.peak = peak
         self.hidden_quantity = quantity - peak
-        self.start_quantity = quantity
         self.timestamp = datetime.now()
-
-    # # @classmethod
-    # def quantity(self):
-    #     if self.peak < self.total_quantity:
-    #         return self.peak
-    #     else

@@ -9,25 +9,19 @@ def run_from_file(path):
     with open(path, mode='r') as f:
         orders = f.readlines()
         for o in orders:
-            # try:
             o = o.strip('\n')
             if not (o.startswith('{') and o.endswith('}')):
                 print(
-                    f"is not a JSON object, (arrays of objects are not supported) \n{o}")
+                    f"not a JSON object, (arrays of objects are not supported) \n{o}")
                 exit()
             print(">", o)
-            print("pre ", str(book))
-            transactions = book.new_order(o)
-            # except Exception as e:
-            #     print(e.args)
-            #     exit()
+            booked_order = book.new_order(o)
 
-            # transactions = book.make_transactions()
-            print("post", str(book))
+            transactions = book.make_transactions(booked_order)
+            print(book)
 
             for t in transactions:
                 print(t)
-            print('\n')
 
 
 def run_as_console():
