@@ -3,7 +3,8 @@
 ## not implemented
 - if two orders have same price, insert to list sorted by time added - "W przypadku takich samych cen decyduje czas dodania zlecenia, tzn. sortujemy rosnąco po czasie dodania zlecenia."
 - Iceberg - "Opis działania zleceń typu Góra Lodowa znajdują się we wskazanym dokumencie."
-    - multiple icebergs at same price point
+    - not really tested - aka not working yet
+    - multiple icebergs at same price point for matching aggressing order
     - aggressing order bigger than iceberg's peak
     - combinations of above two points 
 
