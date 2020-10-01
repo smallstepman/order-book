@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from marshmallow import fields, Schema, validates, ValidationError, post_load
 
 
@@ -64,12 +66,14 @@ class LimitOrder(Order):
     quantity = None
     price = None
     direction = None
+    timestamp = None
 
     def __init__(self, id, quantity, price, direction):
         self.order_id = id
         self.quantity = quantity
         self.price = price
-        self.direction = direction
+        self.direction = direction.lower()
+        self.timestamp = datetime.now()
 
 
 class IcebergOrder(Order):
@@ -79,15 +83,13 @@ class IcebergOrder(Order):
     direction = None
     peak = None
     hidden_quantity = None
-    start_quantity = None
-    total_quantity = None
+    timestamp = None
 
     def __init__(self, id, quantity, price, direction, peak):
         self.order_id = id
         self.quantity = peak
         self.price = price
-        self.direction = direction
+        self.direction = direction.lower()
         self.peak = peak
         self.hidden_quantity = quantity - peak
-        self.start_quantity = quantity
-        self.total_quantity = quantity
+        self.timestamp = datetime.now()
