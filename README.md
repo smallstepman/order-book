@@ -5,7 +5,7 @@
 - Opis działania zleceń typu Góra Lodowa znajdują się we wskazanym dokumencie.
 
 ## install
-prerequesits: `pip install pipenv`
+prerequisites: `pip install pipenv`
 ```
 git clone https://github.com/marcinliebiediew/order_book
 cd order_book
