@@ -18,4 +18,4 @@ pipenv run python src/app.py ./tests/test_data/1.in
 ## test
 ~~`pipenv run pytest`~~
 
-```malually```
+```manually```
