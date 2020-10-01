@@ -1,3 +1,8 @@
-import src as app
-import sys
-sys.path.append('path')
+import pytest
+
+from src import app as _app
+
+
+@pytest.fixture
+def app():
+    return _app
