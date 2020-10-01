@@ -80,6 +80,7 @@ class IcebergOrder(Order):
     peak = None
     hidden_quantity = None
     start_quantity = None
+    total_quantity = None
 
     def __init__(self, id, quantity, price, direction, peak):
         self.order_id = id
@@ -89,8 +90,4 @@ class IcebergOrder(Order):
         self.peak = peak
         self.hidden_quantity = quantity - peak
         self.start_quantity = quantity
-
-    def is_fully_executed(self):
-        return self.quantity == 0
-
-    def find_transactions(self, aggressing_orders):
+        self.total_quantity = quantity

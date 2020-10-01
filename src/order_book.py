@@ -1,6 +1,6 @@
-from typing import Dict
 import json
 import bisect
+from typing import Dict, List, Union
 
 from orders import OrderInputSchema, IcebergOrder, LimitOrder
 
@@ -37,26 +37,40 @@ class OrderBook:
         elif order.direction.lower() == 'sell':
             bisect.insort(self.sell_orders, order)
 
-    def make_transactions(self) -> None:
+    def make_transactions(self) -> List[Dict]:
         transactions = []
-        depleated = False
-        while not depleated:
 
-            for bo in self.buy_orders:
+        for bo_idx, bo in enumerate(self.buy_orders):
+            if len(self.sell_orders) >= 1:
+                if bo < self.sell_orders[0]:
+                    break
 
-                for so in self.sell_orders:
-                    if bo < so:
-                        break
-                    elif isinstance(so, IcebergOrder) and isinstance(bo, IcebergOrder):
-                        print(bo.debug(), '\n', so.debug(), '\n')
-                    elif isinstance(bo, IcebergOrder):
-                        print(bo.debug(), '\n', so.debug(), '\n')
-                    elif isinstance(so, IcebergOrder):
-                        print(bo.debug(), '\n', so.debug(), '\n')
+            for so_idx, so in enumerate(self.sell_orders):
+                if bo > so:
+                    if bo.quantity < so.quantity:
+                        quantity_sold = bo.quantity
+                        print(quantity_sold)
+                        self.buy_orders[bo_idx].quantity = bo.quantity - \
+                            quantity_sold
+                        self.sell_orders[so_idx].quantity = so.quantity - \
+                            quantity_sold
                     else:
-                        print(bo.debug(), '\n', so.debug(), '\n')
+                        quantity_sold = bo.quantity - so.quantity
+                        self.buy_orders[bo_idx].quantity = bo.quantity - \
+                            quantity_sold
+                        self.sell_orders[so_idx].quantity = so.quantity - \
+                            quantity_sold
 
-            if True:
-                depleated = True
-                for t in transactions:
-                    print(t)
+                    transactions.append({
+                        "buyOrderId": bo.order_id,
+                        "sellOrderId": so.order_id,
+                        "price": bo.price,
+                        "quantity": quantity_sold
+                    })
+
+                    if bo.quantity == 0:
+                        self.buy_orders.remove(bo)
+                    if so.quantity == 0:
+                        self.sell_orders.remove(so)
+
+        return transactions

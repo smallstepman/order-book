@@ -1,101 +1,25 @@
 # Order book
 
-## Outline
-- Data structures
-  - Order  
-  - Order book
-  - Transaction ? 
-```markdown
-- Instructions
-  - read from file? - awesome for testing
-  - User input aka `len(sys.argv) == 1`
-    - Loop
-      - Parse input - allow only for single order
-        - `input()`
-          - on error ask again for input?
-          - errors
-            - ID already exists
-            - malformed input
-        - add order(s?) to Order book
-      - Process orders
-        - Clean then sort
-          - If order quantity is 0
-            - Remove order
-          - Sort orders by price
-            - Buy order - descending
-            - Sell order - ascending
-          - Construct Order book
-            - If order.type is limit
-              - Render it in order book
-            - If order.type is iceberg  
-              - If order.quantity >= order.peak
-                - Render it in order book with order.quantity = order.peak
-              - Else
-                - Render it in order book with order.quantity = order.quantity
-            - Sort orders by price
-              - Buy order - descending
-              - Sell order - ascending
-            - Print Order book
-      - Make transactions and reduce quantity
-          - For BO in orders.buyOrders 
-            - For (i, SO) in enumerate(orders.sellOrders)
-              - if BO.price > SO.price 
-                  - break
-              - **DUMB** if BO.type == SO.type == limit
-                - If BO.quantity <= SO.quantity
-                  - BO.quantity = 0
-                  - SO.quantity =- BO.quantity
-                - ElseIf BO.quantity > SO.quantity
-                  - SO.quantity = 0
-                  - BO.quantity -= SO.quantity
-              - else if BO.type == iceberg & SO.type == limit
-                - If BO.quantity <= SO.quantity
-                  - BO.quantity = 0
-                  - SO.quantity =- BO.quantity
-                  - if BO.total_quantity > BO.peak
-                    - BO.total_quantity =- BO.peak
-                    - BO.quantity = BO.peak
-                - ElseIf BO.quantity > SO.quantity
-                  - SO.quantity = 0
-                  - BO.quantity -= SO.quantity
-                  - if BO.total_quantity > BO.peak
-                    - BO.total_quantity =- BO.peak
-                    - BO.quantity = BO.peak
-              - else if BO.type == limit & SO.type == iceberg
-                - If BO.quantity <= SO.quantity
-                  - BO.quantity = 0
-                  - SO.quantity =- BO.quantity
-                  - if SO.total_quantity > SO.peak
-                    - SO.total_quantity =- SO.peak
-                    - SO.quantity = SO.peak
-                - ElseIf BO.quantity > SO.quantity
-                  - SO.quantity = 0
-                  - BO.quantity -= SO.quantity
-                  - if SO.total_quantity > SO.peak
-                    - SO.total_quantity =- SO.peak
-                    - SO.quantity = SO.peak
-              - else if BO.type == iceberg & SO.type == limit
-                - If BO.quantity <= SO.quantity
-                  - BO.quantity = 0
-                  - SO.quantity =- BO.quantity
-                  - if SO.total_quantity > SO.peak
-                    - SO.total_quantity =- SO.peak
-                    - SO.quantity = SO.peak
-                  - if BO.total_quantity > BO.peak
-                    - BO.total_quantity =- BO.peak
-                    - BO.quantity = BO.peak
-                - ElseIf BO.quantity > SO.quantity
-                  - SO.quantity = 0
-                  - BO.quantity -= SO.quantity
-                  - if SO.total_quantity > SO.peak
-                    - SO.total_quantity =- SO.peak
-                    - SO.quantity = SO.peak
-                  - if BO.total_quantity > BO.peak
-                    - BO.total_quantity =- BO.peak
-                    - BO.quantity = BO.peak                 FUJ
-          - if sell order quantity > sum(buyOrders.filter(leave only iceberg).quantites)
-            - L = left quantity from sell order after eating all the peaks
-            - H = iceberg hidden quantity
-            - H/SO.original_quantity - L
-            - maybe I should prep the transaction first? 
+## not implemented:
+- W przypadku takich samych cen decyduje czas dodania zlecenia, tzn. sortujemy rosnąco po czasie dodania zlecenia.
+- Opis działania zleceń typu Góra Lodowa znajdują się we wskazanym dokumencie.
+
+## install
+prerequesits: `pip install pipenv`
+```
+git clone https://github.com/marcinliebiediew/order_book
+cd order_book
+pipenv install
+```
+## run
+```
+pipenv run python src/app.py
+```
+or (TBA)
+```
+pipenv run python src/app.py tests/test_data/1.in
+```
+## test
+```
+pipenv run pytest
 ```
