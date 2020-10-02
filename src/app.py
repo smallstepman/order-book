@@ -31,12 +31,12 @@ def run_as_console():
             if not (input_order_raw.startswith('{') and input_order_raw.endswith('}')):
                 print("not a JSON object, (arrays of objects are not supported)")
                 continue
-            book.new_order(input_order_raw)
+            booked_order = book.new_order(input_order_raw)
         except Exception as e:
             print(e.args)
             continue
 
-        transactions = book.make_transactions()
+        transactions = book.make_transactions(booked_order)
 
         print(book)
         for t in transactions:
